@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# PROVIDE: ddnsgo
+# REQUIRE: LOGIN
+# KEYWORD: shutdown
+#
+# Add these lines to /etc/rc.conf.local or /etc/rc.conf
+# to enable this service:
+#
+# ddnsgo_enable (bool):    Set to NO by default.
+#                Set it to YES to enable ddnsgo.
+# ddnsgo_server (ip:port): Set to 127.0.0.1:9876
+#                by default.
+# ddnsgo_config (path):    Set to /etc/ddnsgo_config.yaml
+#                by default.
+
+. /etc/rc.subr
+
+name="ddnsgo"
+rcvar="${name}_enable"
+command="/usr/sbin/${name}"
+
+daemon_pidfile="/var/run/${name}_daemon.pid"
+pidfile="/var/run/${name}.pid"
+
+load_rc_config $name
+: ${ddnsgo_enable="NO"}
+: ${ddnsgo_server="127.0.0.1:9876"}
+: ${ddnsgo_config="/etc/ddnsgo_config.yaml"}
+
+
+ddnsgo_flags="-l ${ddnsgo_server} -f 300 -cacheTimes 5 -c ${ddnsgo_config}"
+
+start_cmd="/usr/sbin/daemon -r -R 5 -P ${daemon_pidfile} -p ${pidfile} -t ${name} ${command} ${ddnsgo_flags}"
+start_postcmd="${name}_poststart"
+stop_cmd="${name}_stop"
+
+ddnsgo_poststart() {
+    echo "${name}_daemon running pid $(cat ${daemon_pidfile})."
+    echo "${name} running pid $(cat ${pidfile})."
+}
+
+ddnsgo_stop() {
+    if [ -f "$daemon_pidfile" ]; then
+        pid=$(cat $daemon_pidfile)
+        echo "Stopping pid ${pid}."
+        kill "$pid"
+    else
+        echo "${name} not running?"
+    fi
+}
+
+run_rc_command "$@"
